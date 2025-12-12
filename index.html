@@ -1,162 +1,303 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Smart Web Bot (Memory + Personality)</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
-    .chat-container { width:420px; max-width:95vw; background:white; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; }
-    .chat-header { padding:10px 15px; background:#333; color:white; font-weight:bold; display:flex; gap:10px; align-items:center; justify-content:space-between; }
-    .chat-window { padding:10px; height:340px; overflow-y:auto; background:#fafafa; display:flex; flex-direction:column; gap:6px; }
-    .message { padding:8px 10px; border-radius:6px; max-width:78%; font-size:14px; word-wrap:break-word; }
-    .bot { background:#e0e0e0; align-self:flex-start; }
-    .user { background:#cce5ff; align-self:flex-end; }
-    .controls { padding:10px; border-top:1px solid #eee; display:flex; gap:8px; align-items:center; }
-    .controls input { flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; outline:none; }
-    .controls button, .controls select { padding:8px 10px; border-radius:6px; border:none; background:#333; color:#fff; cursor:pointer; }
-    .controls button:hover, .controls select:hover { background:#555; }
-    .small { font-size:12px; color:#666; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smart Web Bot — Polished UI</title>
+<style>
+  :root{
+    --bg:#f2f5f9;
+    --card:#ffffff;
+    --muted:#7b8590;
+    --accent:#2b7be4;
+    --bubble-bot:#ececec;
+    --bubble-user:#dceeff;
+    --shadow: 0 10px 30px rgba(15,23,42,0.12);
+    --radius:14px;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#eef5ff 0%,var(--bg) 100%);color:#0f1724}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+  .chat-card{
+    width:420px; max-width:96vw; border-radius:18px; background:var(--card);
+    box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column;
+    border:1px solid rgba(11,20,32,0.04)
+  }
+
+  /* header */
+  .header{
+    display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(90deg,#12263b 0%, #1b3350 100%);
+    color:#fff;
+  }
+  .brand{
+    display:flex;align-items:center;gap:12px;flex:1;
+  }
+  .logo{
+    width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#7cc0ff,#2b7be4);
+    display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:0 6px 18px rgba(43,123,228,0.18)
+  }
+  .title{font-weight:700;font-size:16px;line-height:1}
+  .subtitle{font-size:12px;color:rgba(255,255,255,0.85);margin-top:2px}
+
+  .controls {
+    display:flex;align-items:center;gap:8px;
+  }
+  select, button.persona-edit {
+    background:rgba(255,255,255,0.95);padding:6px 10px;border-radius:8px;border:none;font-size:13px;cursor:pointer;
+  }
+  .persona-chip{
+    background:rgba(255,255,255,0.12); color:#fff; padding:6px 10px;border-radius:999px; display:flex;gap:8px;align-items:center;
+    font-size:13px;
+  }
+  .persona-chip small{opacity:.9;font-size:12px;color:rgba(255,255,255,0.9)}
+
+  /* chat window */
+  .chat-body{padding:14px; background:linear-gradient(180deg, #fff 0%, #fbfdff 100%); display:flex;flex-direction:column; gap:12px; height:520px;}
+  .messages{flex:1; overflow:auto; padding:6px; display:flex;flex-direction:column; gap:12px;}
+  .row{display:flex;align-items:flex-end;gap:8px;max-width:95%}
+  .row.bot{justify-content:flex-start}
+  .row.user{justify-content:flex-end;align-self:flex-end}
+  .avatar{
+    width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;
+    background:linear-gradient(135deg,#4a90e2,#2b7be4);
+  }
+  .bubble{
+    padding:12px 14px;border-radius:12px;max-width:78%;line-height:1.35;font-size:14px;color:#0f1724;
+    box-shadow:0 6px 12px rgba(9,18,28,0.04);
+  }
+  .bubble.bot{background:var(--bubble-bot); border-top-left-radius:6px}
+  .bubble.user{background:var(--bubble-user); border-top-right-radius:6px}
+  .meta{font-size:11px;color:var(--muted);margin-top:6px}
+
+  /* input area */
+  .composer{display:flex;padding:12px;border-top:1px solid rgba(11,20,32,0.04);gap:8px;align-items:center}
+  .input-wrap{flex:1;display:flex;gap:8px}
+  input#msg{flex:1;padding:12px 14px;border-radius:12px;border:1px solid #e6eef9;outline:none;font-size:14px}
+  button#send{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+  .smallprint{padding:10px 14px;font-size:12px;color:var(--muted);background:transparent}
+
+  /* nice scrollbar for messages */
+  .messages::-webkit-scrollbar{width:9px}
+  .messages::-webkit-scrollbar-thumb{background:rgba(11,20,28,0.08);border-radius:999px}
+
+  /* responsive tweaks */
+  @media (max-width:420px){
+    .chat-card{width:96vw}
+    .header{padding:10px}
+  }
+</style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <div>Smart Web Bot</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="personalitySelect"></select>
-        <button id="resetBtn">Reset</button>
+  <div class="wrap">
+    <div class="chat-card" role="region" aria-label="Smart web bot">
+      <div class="header">
+        <div class="brand">
+          <div class="logo">SB</div>
+          <div>
+            <div class="title">Smart Web Bot</div>
+            <div class="subtitle">Memory + Personality</div>
+          </div>
+        </div>
+
+        <div class="controls" id="personaControls">
+          <!-- will be toggled by JS -->
+          <select id="personalitySelect" aria-label="Choose personality"></select>
+          <button class="persona-edit" id="applyPersona">Apply</button>
+        </div>
+
+        <div class="controls" style="display:none" id="personaChipWrap">
+          <div class="persona-chip" id="personaChip">
+            <strong id="personaName">default</strong>
+            <small id="personaDesc"> — system default</small>
+            <button class="persona-edit" id="changePersona" title="Change" style="margin-left:6px">✎</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-body">
+        <div class="messages" id="messages" aria-live="polite"></div>
+
+        <div class="composer">
+          <div class="input-wrap">
+            <input id="msg" type="text" placeholder="Type a message..." autocomplete="off" />
+            <button id="send">Send</button>
+          </div>
+        </div>
+
+        <div class="smallprint">
+          Session ID: <span id="sessionPreview">—</span>
+        </div>
       </div>
     </div>
-
-    <div id="chatWindow" class="chat-window"></div>
-
-    <div class="controls">
-      <input id="userInput" type="text" placeholder="Type a message..." />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div style="padding:6px 10px;" class="small">Session ID: <span id="sessionIdPreview">—</span></div>
   </div>
 
-  <script>
-    const API_BASE = "https://smart-bot-backend-2.onrender.com"; // e.g. https://your-new-backend.onrender.com
-    const LS_KEY = "smart_bot_session_id";
+<script>
+  // =========================
+  // CONFIG: set your backend
+  // =========================
+  const API_BASE = "https://smart-bot-backend-2.onrender.com"; // <-- change to your Render URL
+  const LS_KEY = "smart_bot_session_id";
 
-    const chatWindow = document.getElementById("chatWindow");
-    const input = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const resetBtn = document.getElementById("resetBtn");
-    const personalitySelect = document.getElementById("personalitySelect");
-    const sessionPreview = document.getElementById("sessionIdPreview");
+  // DOM
+  const messagesEl = document.getElementById('messages');
+  const personalitySelect = document.getElementById('personalitySelect');
+  const applyPersonaBtn = document.getElementById('applyPersona');
+  const personaControls = document.getElementById('personaControls');
+  const personaChipWrap = document.getElementById('personaChipWrap');
+  const personaNameEl = document.getElementById('personaName');
+  const personaDescEl = document.getElementById('personaDesc');
+  const changePersonaBtn = document.getElementById('changePersona');
+  const sendBtn = document.getElementById('send');
+  const msgInput = document.getElementById('msg');
+  const sessionPreview = document.getElementById('sessionPreview');
 
-    let sessionId = localStorage.getItem(LS_KEY) || null;
-    let currentPersonality = "default";
+  // state
+  let sessionId = localStorage.getItem(LS_KEY) || null;
+  let currentPersonality = "default";
+  let personalities = {};
 
-    function addMessage(sender, text) {
-      const el = document.createElement("div");
-      el.classList.add("message", sender === "Bot" ? "bot" : "user");
-      el.textContent = sender + ": " + text;
-      chatWindow.appendChild(el);
-      chatWindow.scrollTop = chatWindow.scrollHeight;
+  // small helpers
+  function el(html){ const d = document.createElement('div'); d.innerHTML = html; return d.firstElementChild; }
+  function isoNow(){ return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+
+  function addBot(text){
+    const row = document.createElement('div'); row.className='row bot';
+    row.innerHTML = `
+      <div class="avatar" aria-hidden="true">🤖</div>
+      <div>
+        <div class="bubble bot">${text}</div>
+        <div class="meta">${isoNow()}</div>
+      </div>`;
+    messagesEl.appendChild(row); messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  function addUser(text){
+    const row = document.createElement('div'); row.className='row user';
+    row.innerHTML = `
+      <div>
+        <div class="bubble user">${text}</div>
+        <div class="meta">${isoNow()}</div>
+      </div>
+      <div class="avatar" aria-hidden="true" style="background:linear-gradient(135deg,#ffd27a,#ff8a4a)">You</div>
+    `;
+    messagesEl.appendChild(row); messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // fetch personalities from server and populate select
+  async function loadPersonalities(){
+    try{
+      const r = await fetch(API_BASE + '/personalities');
+      if(!r.ok) throw new Error('Could not fetch personalities');
+      personalities = await r.json();
+      personalitySelect.innerHTML = '';
+      Object.keys(personalities).forEach(k=>{
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = `${k} — ${personalities[k].slice(0,48)}...`;
+        personalitySelect.appendChild(opt);
+      });
+      personalitySelect.value = currentPersonality;
+      updateChip();
+    }catch(e){
+      console.error(e);
+      addBot('Could not load personalities from server.');
     }
+  }
 
-    async function fetchPersonalities() {
-      try {
-        const res = await fetch(API_BASE + "/personalities");
-        const data = await res.json();
-        personalitySelect.innerHTML = "";
-        for (const key in data) {
-          const opt = document.createElement("option");
-          opt.value = key;
-          opt.textContent = key + " — " + (data[key].slice(0, 40) + "...");
-          personalitySelect.appendChild(opt);
-        }
-        personalitySelect.value = currentPersonality;
-      } catch (e) {
-        console.error("Could not fetch personalities", e);
-      }
+  function updateChip(){
+    personaNameEl.textContent = currentPersonality;
+    personaDescEl.textContent = ' — ' + (personalities[currentPersonality] ? personalities[currentPersonality].slice(0,60) : 'system default');
+  }
+
+  async function startSession(personality){
+    try{
+      const res = await fetch(API_BASE + '/start_session?personality=' + encodeURIComponent(personality), { method: 'POST' });
+      if(!res.ok) throw new Error('start_session failed: ' + res.status);
+      const data = await res.json();
+      sessionId = data.session_id;
+      localStorage.setItem(LS_KEY, sessionId);
+      sessionPreview.textContent = sessionId;
+      addBot('New session started. Personality: ' + data.personality);
+      hidePersonaSelector();
+      return sessionId;
+    }catch(err){
+      console.error(err);
+      addBot('Could not start session. Check server.');
+      throw err;
     }
+  }
 
-    async function startSessionIfNeeded(personality = "default") {
-      if (sessionId) {
-        sessionPreview.textContent = sessionId;
+  async function resetSession(){
+    if(!sessionId){ addBot('No session to reset.'); return; }
+    try{
+      const res = await fetch(API_BASE + '/reset_session?session_id=' + encodeURIComponent(sessionId), { method:'POST' });
+      if(!res.ok) throw new Error('reset failed');
+      addBot('Session memory reset.');
+    }catch(e){
+      console.error(e); addBot('Error resetting session.');
+    }
+  }
+
+  async function sendMessage(){
+    const text = msgInput.value.trim();
+    if(!text) return;
+    addUser(text);
+    msgInput.value = '';
+    // ensure session
+    if(!sessionId){
+      try { await startSession(currentPersonality); } catch(e){ return; }
+    }
+    try{
+      const payload = { message: text, session_id: sessionId, personality: currentPersonality };
+      const r = await fetch(API_BASE + '/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if(!r.ok){
+        const err = await r.json().catch(()=>({detail:r.statusText}));
+        addBot('Server error: ' + (err.detail || r.status));
         return;
       }
-      try {
-        const res = await fetch(API_BASE + "/start_session?personality=" + encodeURIComponent(personality), { method: "POST" });
-        const data = await res.json();
-        sessionId = data.session_id;
-        localStorage.setItem(LS_KEY, sessionId);
-        sessionPreview.textContent = sessionId;
-        addMessage("Bot", "New session started. Personality: " + data.personality);
-      } catch (e) {
-        console.error("Could not start session", e);
-        addMessage("Bot", "Could not start session. Check server.");
-      }
+      const data = await r.json();
+      if(data.session_id && data.session_id !== sessionId){ sessionId = data.session_id; localStorage.setItem(LS_KEY, sessionId); sessionPreview.textContent = sessionId; }
+      addBot(data.reply || 'No reply');
+    }catch(e){
+      console.error(e);
+      addBot('Error talking to server.');
     }
+  }
 
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text) return;
-      addMessage("You", text);
-      input.value = "";
-      await startSessionIfNeeded(currentPersonality);
+  function hidePersonaSelector(){
+    personaControls.style.display = 'none';
+    personaChipWrap.style.display = 'flex';
+  }
+  function showPersonaSelector(){
+    personaControls.style.display = 'flex';
+    personaChipWrap.style.display = 'none';
+  }
 
-      try {
-        const payload = { message: text, session_id: sessionId, personality: currentPersonality };
-        const res = await fetch(API_BASE + "/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+  // UI events
+  applyPersonaBtn.addEventListener('click', async ()=>{
+    const sel = personalitySelect.value;
+    currentPersonality = sel || 'default';
+    updateChip();
+    await startSession(currentPersonality);
+  });
+  changePersonaBtn.addEventListener('click', ()=>{
+    showPersonaSelector();
+  });
+  sendBtn.addEventListener('click', sendMessage);
+  msgInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') sendMessage() });
 
-        if (!res.ok) {
-          const err = await res.json().catch(()=>({detail:res.statusText}));
-          addMessage("Bot", "Server error: " + (err.detail || res.status));
-          return;
-        }
-        const data = await res.json();
-        if (data.session_id && data.session_id !== sessionId) {
-          sessionId = data.session_id;
-          localStorage.setItem(LS_KEY, sessionId);
-          sessionPreview.textContent = sessionId;
-        }
-        addMessage("Bot", data.reply);
-      } catch (e) {
-        console.error(e);
-        addMessage("Bot", "Error talking to server.");
-      }
+  // initialization
+  (async function init(){
+    await loadPersonalities();
+    // try auto start only if session exists false - we want user to pick persona once
+    if(sessionId){
+      sessionPreview.textContent = sessionId;
+      addBot("Welcome back! Your session is restored.");
+      hidePersonaSelector();
+    } else {
+      addBot("Hi — please choose a personality to begin (or press Apply).");
+      showPersonaSelector();
     }
-
-    async function resetSession() {
-      if (!sessionId) { await startSessionIfNeeded(currentPersonality); return; }
-      try {
-        const res = await fetch(API_BASE + "/reset_session?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
-        if (!res.ok) {
-          addMessage("Bot", "Could not reset session.");
-          return;
-        }
-        addMessage("Bot", "Session memory reset.");
-      } catch (e) {
-        console.error(e);
-        addMessage("Bot", "Error resetting session.");
-      }
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
-    resetBtn.addEventListener("click", async () => { await resetSession(); });
-
-    personalitySelect.addEventListener("change", async (e) => {
-      currentPersonality = e.target.value;
-      addMessage("Bot", "Personality set to: " + currentPersonality + ". It will apply to the session.");
-    });
-
-    (async function init() {
-      await fetchPersonalities();
-      await startSessionIfNeeded(currentPersonality);
-      addMessage("Bot", "Hi — I'm your smart bot. Type a message.");
-    })();
-  </script>
+  })();
+</script>
 </body>
 </html>
-
