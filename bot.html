@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smart Web Bot (Memory + Personality)</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+    .chat-container { width:420px; max-width:95vw; background:white; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; }
+    .chat-header { padding:10px 15px; background:#333; color:white; font-weight:bold; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .chat-window { padding:10px; height:340px; overflow-y:auto; background:#fafafa; display:flex; flex-direction:column; gap:6px; }
+    .message { padding:8px 10px; border-radius:6px; max-width:78%; font-size:14px; word-wrap:break-word; }
+    .bot { background:#e0e0e0; align-self:flex-start; }
+    .user { background:#cce5ff; align-self:flex-end; }
+    .controls { padding:10px; border-top:1px solid #eee; display:flex; gap:8px; align-items:center; }
+    .controls input { flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; outline:none; }
+    .controls button, .controls select { padding:8px 10px; border-radius:6px; border:none; background:#333; color:#fff; cursor:pointer; }
+    .controls button:hover, .controls select:hover { background:#555; }
+    .small { font-size:12px; color:#666; }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <div>Smart Web Bot</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="personalitySelect"></select>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </div>
+
+    <div id="chatWindow" class="chat-window"></div>
+
+    <div class="controls">
+      <input id="userInput" type="text" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+    <div style="padding:6px 10px;" class="small">Session ID: <span id="sessionIdPreview">—</span></div>
+  </div>
+
+  <script>
+    const API_BASE = "REPLACE_WITH_RENDER_URL"; // e.g. https://your-new-backend.onrender.com
+    const LS_KEY = "smart_bot_session_id";
+
+    const chatWindow = document.getElementById("chatWindow");
+    const input = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const personalitySelect = document.getElementById("personalitySelect");
+    const sessionPreview = document.getElementById("sessionIdPreview");
+
+    let sessionId = localStorage.getItem(LS_KEY) || null;
+    let currentPersonality = "default";
+
+    function addMessage(sender, text) {
+      const el = document.createElement("div");
+      el.classList.add("message", sender === "Bot" ? "bot" : "user");
+      el.textContent = sender + ": " + text;
+      chatWindow.appendChild(el);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    async function fetchPersonalities() {
+      try {
+        const res = await fetch(API_BASE + "/personalities");
+        const data = await res.json();
+        personalitySelect.innerHTML = "";
+        for (const key in data) {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = key + " — " + (data[key].slice(0, 40) + "...");
+          personalitySelect.appendChild(opt);
+        }
+        personalitySelect.value = currentPersonality;
+      } catch (e) {
+        console.error("Could not fetch personalities", e);
+      }
+    }
+
+    async function startSessionIfNeeded(personality = "default") {
+      if (sessionId) {
+        sessionPreview.textContent = sessionId;
+        return;
+      }
+      try {
+        const res = await fetch(API_BASE + "/start_session?personality=" + encodeURIComponent(personality), { method: "POST" });
+        const data = await res.json();
+        sessionId = data.session_id;
+        localStorage.setItem(LS_KEY, sessionId);
+        sessionPreview.textContent = sessionId;
+        addMessage("Bot", "New session started. Personality: " + data.personality);
+      } catch (e) {
+        console.error("Could not start session", e);
+        addMessage("Bot", "Could not start session. Check server.");
+      }
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage("You", text);
+      input.value = "";
+      await startSessionIfNeeded(currentPersonality);
+
+      try {
+        const payload = { message: text, session_id: sessionId, personality: currentPersonality };
+        const res = await fetch(API_BASE + "/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(()=>({detail:res.statusText}));
+          addMessage("Bot", "Server error: " + (err.detail || res.status));
+          return;
+        }
+        const data = await res.json();
+        if (data.session_id && data.session_id !== sessionId) {
+          sessionId = data.session_id;
+          localStorage.setItem(LS_KEY, sessionId);
+          sessionPreview.textContent = sessionId;
+        }
+        addMessage("Bot", data.reply);
+      } catch (e) {
+        console.error(e);
+        addMessage("Bot", "Error talking to server.");
+      }
+    }
+
+    async function resetSession() {
+      if (!sessionId) { await startSessionIfNeeded(currentPersonality); return; }
+      try {
+        const res = await fetch(API_BASE + "/reset_session?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
+        if (!res.ok) {
+          addMessage("Bot", "Could not reset session.");
+          return;
+        }
+        addMessage("Bot", "Session memory reset.");
+      } catch (e) {
+        console.error(e);
+        addMessage("Bot", "Error resetting session.");
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+    resetBtn.addEventListener("click", async () => { await resetSession(); });
+
+    personalitySelect.addEventListener("change", async (e) => {
+      currentPersonality = e.target.value;
+      addMessage("Bot", "Personality set to: " + currentPersonality + ". It will apply to the session.");
+    });
+
+    (async function init() {
+      await fetchPersonalities();
+      await startSessionIfNeeded(currentPersonality);
+      addMessage("Bot", "Hi — I'm your smart bot. Type a message.");
+    })();
+  </script>
+</body>
+</html>
